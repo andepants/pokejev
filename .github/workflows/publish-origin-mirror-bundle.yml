@@ -1,0 +1,40 @@
+name: Publish origin mirror bundle
+
+on:
+  push:
+    branches:
+      - origin-mirror-bundle
+    paths:
+      - "mirror/**"
+      - ".github/workflows/publish-origin-mirror-bundle.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reassemble bundle
+        run: |
+          set -euo pipefail
+          cat mirror/pokejev-main.bundle.b64.part* > /tmp/pokejev-main.bundle.b64
+          base64 -d /tmp/pokejev-main.bundle.b64 > pokejev-main.bundle
+          cp mirror/pokejev-main.sha pokejev-main.sha
+          test "$(tr -d '\n' < pokejev-main.sha)" = "$(tr -d '\n' < mirror/pokejev-main.sha)"
+          git bundle verify pokejev-main.bundle
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: origin-mirror-bundle
+          name: Origin mirror bundle
+          body: |
+            Full git bundle of Origin `main` for Coding Factory to force-push to this GitHub mirror.
+            Expected `main` tip: see `pokejev-main.sha`.
+          files: |
+            pokejev-main.bundle
+            pokejev-main.sha
+          make_latest: true
+          overwrite_files: true
